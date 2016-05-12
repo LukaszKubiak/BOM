@@ -34,57 +34,102 @@ namespace BOM
             Excel.Range range = xlWorkSheet.UsedRange;
             object misValue = System.Reflection.Missing.Value;
 
-            string str;
             int rCnt = 0;
-            int cCnt = 0;
             string[][] results = new string[range.Rows.Count - 16][];
-            for (int i = 0; i < range.Rows.Count - 16; i++)
-            {
-                results[i] = new string[range.Rows.Count - 16];
-            }
-
             List<string> lista = new List<string>();
             List<string> lista2 = new List<string>();
-
-            range.UnMerge();
-            for (rCnt = 18; rCnt < range.Rows.Count; rCnt++)
+            List<Item> items = new List<Item>();
+            List<Item> children = new List<Item>();
+            for (rCnt = 18; rCnt <= range.Rows.Count;)
             {
-                for (cCnt = 1; cCnt <= 4; cCnt++)
+                var item = new Item();
+                item.Line = "H";
+                item.ItemCode = (range.Cells[rCnt, 1] as Excel.Range).Text;
+                item.ItemDesc = (range.Cells[rCnt, 2] as Excel.Range).Text;
+                string childCode = (range.Cells[rCnt, 3] as Excel.Range).Text;
+                string childDesc = (range.Cells[rCnt, 4] as Excel.Range).Text;
+                string childQuantity = (range.Cells[rCnt, 7] as Excel.Range).Text;
+                if (childCode != "" && childDesc != "")
+                    item.Children.Add(new Child(childCode, childDesc, childQuantity));
+                int quantityIndex = rCnt;
+            while ((range.Cells[++rCnt, 2] as Excel.Range).Text == "" && rCnt <= range.Rows.Count)
                 {
-                   str = (range.Cells[rCnt, cCnt] as Excel.Range).Text;
-                    if (str == "" && (cCnt == 1 || cCnt == 2 || rCnt==18))
-                        continue;
-                    else
-                        lista.Add(str);          
-                }
-            }
-            rCnt = 18;
-            cCnt = 1;
-            str = (range.Cells[rCnt, cCnt] as Excel.Range).Text;
-           
-            while (rCnt < range.Rows.Count)
-            {
-                if (((range.Cells[rCnt, 1] as Excel.Range).Text == "" && (range.Cells[rCnt, 2] as Excel.Range).Text == ""))
-                    rCnt++;
-
-                lista2.Add((range.Cells[rCnt, 1] as Excel.Range).Text);
-                lista2.Add((range.Cells[rCnt, 2] as Excel.Range).Text);
-                if (!((range.Cells[rCnt, 3] as Excel.Range).Text == "" && (range.Cells[rCnt, 4] as Excel.Range).Text == ""))
-                {
-                    lista2.Add((range.Cells[rCnt, 3] as Excel.Range).Text);
-                    lista2.Add((range.Cells[rCnt, 4] as Excel.Range).Text);
-                }
-                while ((range.Cells[++rCnt, 2] as Excel.Range).Text == "" && rCnt < range.Rows.Count)
-                {
-                    if ((range.Cells[rCnt, 3] as Excel.Range).Text == "" && (range.Cells[rCnt, 4] as Excel.Range).Text == "")
-                        continue;
-                    else {
-                        lista2.Add((range.Cells[rCnt, 3] as Excel.Range).Text);
-                        lista2.Add((range.Cells[rCnt, 4] as Excel.Range).Text);
+                    childCode = (range.Cells[rCnt, 3] as Excel.Range).Text;
+                    childDesc = (range.Cells[rCnt, 4] as Excel.Range).Text;
+                    childQuantity = (range.Cells[rCnt, 7] as Excel.Range).Text;
+                    if(childCode == "" && childDesc == "" && !(range.Cells[rCnt, 3] as Excel.Range).MergeCells)
+                    {
+                        childCode = (range.Cells[rCnt, 11] as Excel.Range).Text;
+                        childDesc = (range.Cells[rCnt, 12] as Excel.Range).Text;
+                        childQuantity = (range.Cells[rCnt, 14] as Excel.Range).Text;
                     }
+                    if (childQuantity == "")
+                        childQuantity = (range.Cells[quantityIndex, 7] as Excel.Range).Text;
+                    else
+                        quantityIndex = rCnt;
+                    if(childCode != "" && childDesc != "")
+                        item.Children.Add(new Child(childCode, childDesc, childQuantity));
                 }
+                items.Add(item);
 
             }
+            for (int i = 0; i < items.Count; i++)
+            {
+                foreach (var child in items[i].Children)
+                {
+                    var item = new Item();
+                    item.Line = "H";
+                    item.ItemCode = child.ItemCode;
+                    item.ItemDesc = child.ItemDesc;
+                    for (rCnt = 18; rCnt <= range.Rows.Count;rCnt++)
+                    {
+                        if ((range.Cells[rCnt, 3] as Excel.Range).Text == item.ItemCode)
+                        {
+                            string childCode = (range.Cells[rCnt, 11] as Excel.Range).Text;
+                            string childDesc = (range.Cells[rCnt, 12] as Excel.Range).Text;
+                            string childQuantity = (range.Cells[rCnt, 14] as Excel.Range).Text;
+                            if (childCode != "" && childDesc != "" && childCode != item.ItemCode)
+                                item.Children.Add(new Child(childCode, childDesc, childQuantity));
+                            while ((range.Cells[++rCnt, 3] as Excel.Range).Text == "" && rCnt <= range.Rows.Count && (range.Cells[rCnt, 3] as Excel.Range).MergeCells)
+                            {
+                                childCode = (range.Cells[rCnt, 11] as Excel.Range).Text;
+                                childDesc = (range.Cells[rCnt, 12] as Excel.Range).Text;
+                                childQuantity = (range.Cells[rCnt, 14] as Excel.Range).Text;
+                                if(childCode != "" && childDesc != "")
+                                    item.Children.Add(new Child(childCode, childDesc, childQuantity));
+                            }
+                            break;
+                        }
+                    }
+                    children.Add(item);
+                }
+                
+            }
+            foreach (var item in items)
+            {
+                
+                    textBox1.AppendText(item.Line + "   " + item.ItemCode + "   " + item.ItemDesc + "    \n");
+                    foreach (var item2 in item.Children)
+                    {
+                        textBox1.AppendText("L   " + item2.ItemCode + "    " + item2.ItemDesc + "   " + item2.Quantity + "\n");
+                    }
+                    int i = 0;
+                    foreach (var item2 in item.Children)
+                    {
+                    
+                        var child = children.Find(x => x.ItemCode == item2.ItemCode);
+                    if (child.Children.Count > 0)
+                    {
+                        textBox1.AppendText(child.Line + "   " + child.ItemCode + "   " + child.ItemDesc + "    \n");
+                        foreach (var child2 in child.Children)
+                        {
+                            textBox1.AppendText("L   " + child2.ItemCode + "    " + child2.ItemDesc + "   " + child2.Quantity + "\n");
+                        }
+                    }
+                    }
+                
+            }
+
 
             xlWorkBook.Close(true, misValue, misValue);
             xlApp.Quit();
