@@ -35,11 +35,16 @@ namespace BOM
 
         private void insertData(Excel.Worksheet sheet, int row, string line, string code, string desc, string quantity,string cost)
         {
-            sheet.Cells[row, 3] = line;
-            sheet.Cells[row, 5] = code;
-            sheet.Cells[row, 6] = desc;
-            sheet.Cells[row, 12] = quantity;
-            sheet.Cells[row, 23] = cost;
+            
+                sheet.Cells[row, 3] = line;
+                if (code == "")
+                    sheet.Cells[row, 5] = code;
+                else
+                    sheet.Cells[row, 5] = '‘' + code;
+                sheet.Cells[row, 6] = '‘' + desc;
+                sheet.Cells[row, 12] = quantity;
+                sheet.Cells[row, 23] = cost.Replace(" ", String.Empty);
+            
         }
         private void CalculateSheet()
         {
@@ -49,8 +54,9 @@ namespace BOM
             Excel.Range range = xlWorkSheet.UsedRange;
             object misValue = System.Reflection.Missing.Value;
             var ImportSheet = (Excel.Worksheet)xlWorkBook.Worksheets.Add(Type.Missing, xlWorkSheet, Type.Missing, Type.Missing);
-            importWorkSheet.UsedRange.Copy();
+            importWorkSheet.UsedRange.Copy(Type.Missing);
             ImportSheet.Paste();
+            //importWorkSheet.Copy(Type.Missing);
             ImportSheet.Application.ActiveWindow.SplitRow = 7;
             ImportSheet.Application.ActiveWindow.FreezePanes = true;
             ImportSheet.Name = "Import";
@@ -64,7 +70,7 @@ namespace BOM
             btn2.OnAction = "Odczyt";
             btn2.OLEFormat.Object.Caption = "ZAPIS";
 
-            Row.AutoFilter(1,
+        Row.AutoFilter(1,
                     Type.Missing,
                     Excel.XlAutoFilterOperator.xlAnd,
                     Type.Missing,
@@ -81,7 +87,8 @@ namespace BOM
                 string childCode = (range.Cells[rCnt, 3] as Excel.Range).Text;
                 string childDesc = (range.Cells[rCnt, 4] as Excel.Range).Text;
                 string childQuantity = (range.Cells[rCnt, 7] as Excel.Range).Text;
-                string childCost = (range.Cells[rCnt, 8] as Excel.Range).Text;
+                string childCost = childCost = (range.Cells[rCnt, 8] as Excel.Range).Text;
+                    
                 if (childCode != "" || childDesc != "")
                 {
                     if (childDesc == "")
@@ -97,7 +104,8 @@ namespace BOM
                     childCode = (range.Cells[rCnt, 3] as Excel.Range).Text;
                     childDesc = (range.Cells[rCnt, 4] as Excel.Range).Text;
                     childQuantity = (range.Cells[rCnt, 7] as Excel.Range).Text;
-                    childCost = (range.Cells[rCnt, 8] as Excel.Range).Text;
+                    childCost = childCost = (range.Cells[rCnt, 8] as Excel.Range).Text;
+                                            
                     if (childCode == "" && childDesc == "" && !(range.Cells[rCnt, 3] as Excel.Range).MergeCells)
                     {
                         childCode = (range.Cells[rCnt, 11] as Excel.Range).Text;
@@ -113,6 +121,10 @@ namespace BOM
                     {
                         descIndex = rCnt;
                     }
+                    if (childCost == "" && !childDesc.Contains("Mat") && !(range.Cells[rCnt, 5] as Excel.Range).Text.Contains("Mat")&&(childCode != "" || childDesc != ""))
+                    {
+                        item.Children.Last().Cost = "";
+                    }
                     if (childQuantity == "" && (range.Cells[rCnt, 7] as Excel.Range).MergeCells)
                     {
                         childQuantity = (range.Cells[quantityIndex, 7] as Excel.Range).Text;
@@ -122,14 +134,6 @@ namespace BOM
                     {
                         quantityIndex = rCnt;
                         
-                    }
-                    if (childCost == "" && (range.Cells[rCnt, 8] as Excel.Range).MergeCells)
-                    {
-                        childCost = (range.Cells[childCostIndex, 8] as Excel.Range).Text;
-                    }
-                    else
-                    {
-                        childCostIndex = rCnt;
                     }
                     if (childCode != "" || childDesc != "")
                     {
@@ -181,11 +185,13 @@ namespace BOM
             {
 
                 textBox1.AppendText(item.Line + "   " + item.ItemCode + "   " + item.ItemDesc + "    \n");
-                insertData(ImportSheet, rCnt++, item.Line, item.ItemCode, item.ItemDesc, "","");
+                if(item.ItemCode.Replace(" ",String.Empty) != "" || item.ItemDesc.Replace(" ", String.Empty) != "")
+                    insertData(ImportSheet, rCnt++, item.Line, item.ItemCode, item.ItemDesc, "","");
                 foreach (var item2 in item.Children)
                 {
                     textBox1.AppendText("L   " + item2.ItemCode + "    " + item2.ItemDesc + "   " + item2.Quantity + "\n");
-                    insertData(ImportSheet, rCnt++, "L", item2.ItemCode, item2.ItemDesc, item2.Quantity,item2.Cost);
+                    if (item2.ItemCode.Replace(" ", String.Empty) != "" || item2.ItemDesc.Replace(" ", String.Empty) != "")
+                        insertData(ImportSheet, rCnt++, "L", item2.ItemCode, item2.ItemDesc, item2.Quantity,item2.Cost);
                 }
                 int i = 0;
                 foreach (var item2 in item.Children)
@@ -195,11 +201,13 @@ namespace BOM
                     if (child.Children.Count > 0)
                     {
                         textBox1.AppendText(child.Line + "   " + child.ItemCode + "   " + child.ItemDesc + "    \n");
-                        insertData(ImportSheet, rCnt++, child.Line, child.ItemCode, child.ItemDesc, "","");
+                        if (item2.ItemCode.Replace(" ", String.Empty) != "" || item2.ItemDesc.Replace(" ", String.Empty) != "")
+                            insertData(ImportSheet, rCnt++, child.Line, child.ItemCode, child.ItemDesc, "","");
                         foreach (var child2 in child.Children)
                         {
                             textBox1.AppendText("L   " + child2.ItemCode + "    " + child2.ItemDesc + "   " + child2.Quantity + "\n");
-                            insertData(ImportSheet, rCnt++, "L", child2.ItemCode, child2.ItemDesc, child2.Quantity,child2.Cost);
+                            if (child2.ItemCode.Replace(" ", String.Empty) != "" || child2.ItemDesc.Replace(" ", String.Empty) != "")
+                                insertData(ImportSheet, rCnt++, "L", child2.ItemCode, child2.ItemDesc, child2.Quantity,child2.Cost);
                         }
                     }
                 }
