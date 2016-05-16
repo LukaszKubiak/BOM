@@ -33,12 +33,13 @@ namespace BOM
             }
         }
 
-        private void insertData(Excel.Worksheet sheet, int row, string line, string code, string desc, string quantity)
+        private void insertData(Excel.Worksheet sheet, int row, string line, string code, string desc, string quantity,string cost)
         {
             sheet.Cells[row, 3] = line;
             sheet.Cells[row, 5] = code;
             sheet.Cells[row, 6] = desc;
             sheet.Cells[row, 12] = quantity;
+            sheet.Cells[row, 23] = cost;
         }
         private void CalculateSheet()
         {
@@ -50,6 +51,24 @@ namespace BOM
             var ImportSheet = (Excel.Worksheet)xlWorkBook.Worksheets.Add(Type.Missing, xlWorkSheet, Type.Missing, Type.Missing);
             importWorkSheet.UsedRange.Copy();
             ImportSheet.Paste();
+            ImportSheet.Application.ActiveWindow.SplitRow = 7;
+            ImportSheet.Application.ActiveWindow.FreezePanes = true;
+            ImportSheet.Name = "Import";
+            Excel.Range Row = (Excel.Range)ImportSheet.Range["A7", "W7"];
+            ImportSheet.Range["G:J", Type.Missing].EntireColumn.Hidden = true;
+            ImportSheet.Range["M:N", Type.Missing].EntireColumn.Hidden = true;
+            ImportSheet.Range["P:P", Type.Missing].EntireColumn.Hidden = true;
+
+            Excel.Shape btn2 = ImportSheet.Shapes.AddFormControl(Excel.XlFormControl.xlButtonControl, 10, 10, 100, 22);
+            btn2.Name = "Save";
+            btn2.OnAction = "Odczyt";
+            btn2.OLEFormat.Object.Caption = "ZAPIS";
+
+            Row.AutoFilter(1,
+                    Type.Missing,
+                    Excel.XlAutoFilterOperator.xlAnd,
+                    Type.Missing,
+                    true);
             int rCnt = 0;
             List<Item> items = new List<Item>();
             List<Item> children = new List<Item>();
@@ -62,26 +81,63 @@ namespace BOM
                 string childCode = (range.Cells[rCnt, 3] as Excel.Range).Text;
                 string childDesc = (range.Cells[rCnt, 4] as Excel.Range).Text;
                 string childQuantity = (range.Cells[rCnt, 7] as Excel.Range).Text;
+                string childCost = (range.Cells[rCnt, 8] as Excel.Range).Text;
                 if (childCode != "" || childDesc != "")
-                    item.Children.Add(new Child(childCode, childDesc, childQuantity));
+                {
+                    if (childDesc == "")
+                        item.Children.Add(new Child(childCode, childCode, childQuantity, childCost));
+                    else
+                        item.Children.Add(new Child(childCode, childDesc, childQuantity, childCost));
+                }
                 int quantityIndex = rCnt;
+                int childCostIndex = rCnt;
+                int descIndex = rCnt;
                 while ((range.Cells[++rCnt, 2] as Excel.Range).Text == "" && rCnt <= range.Rows.Count)
                 {
                     childCode = (range.Cells[rCnt, 3] as Excel.Range).Text;
                     childDesc = (range.Cells[rCnt, 4] as Excel.Range).Text;
                     childQuantity = (range.Cells[rCnt, 7] as Excel.Range).Text;
+                    childCost = (range.Cells[rCnt, 8] as Excel.Range).Text;
                     if (childCode == "" && childDesc == "" && !(range.Cells[rCnt, 3] as Excel.Range).MergeCells)
                     {
                         childCode = (range.Cells[rCnt, 11] as Excel.Range).Text;
                         childDesc = (range.Cells[rCnt, 12] as Excel.Range).Text;
                         childQuantity = (range.Cells[rCnt, 14] as Excel.Range).Text;
+                        childCost = (range.Cells[rCnt, 15] as Excel.Range).Text;
+                    }
+                    else if(childCode != "" && childDesc == "" && (range.Cells[rCnt, 4] as Excel.Range).MergeCells)
+                    {
+                        childDesc = (range.Cells[descIndex, 4] as Excel.Range).Text;
+                    }
+                    else
+                    {
+                        descIndex = rCnt;
                     }
                     if (childQuantity == "" && (range.Cells[rCnt, 7] as Excel.Range).MergeCells)
+                    {
                         childQuantity = (range.Cells[quantityIndex, 7] as Excel.Range).Text;
+                        
+                    }
                     else
+                    {
                         quantityIndex = rCnt;
+                        
+                    }
+                    if (childCost == "" && (range.Cells[rCnt, 8] as Excel.Range).MergeCells)
+                    {
+                        childCost = (range.Cells[childCostIndex, 8] as Excel.Range).Text;
+                    }
+                    else
+                    {
+                        childCostIndex = rCnt;
+                    }
                     if (childCode != "" || childDesc != "")
-                        item.Children.Add(new Child(childCode, childDesc, childQuantity));
+                    {
+                        if (childDesc == "")
+                            item.Children.Add(new Child(childCode, childCode, childQuantity, childCost));
+                        else
+                            item.Children.Add(new Child(childCode, childDesc, childQuantity, childCost));
+                    }
                 }
                 items.Add(item);
 
@@ -101,15 +157,17 @@ namespace BOM
                             string childCode = (range.Cells[rCnt, 11] as Excel.Range).Text;
                             string childDesc = (range.Cells[rCnt, 12] as Excel.Range).Text;
                             string childQuantity = (range.Cells[rCnt, 14] as Excel.Range).Text;
+                            string childCost = (range.Cells[rCnt, 15] as Excel.Range).Text;
                             if ((childCode != "" || childDesc != "") && childCode != item.ItemCode)
-                                item.Children.Add(new Child(childCode, childDesc, childQuantity));
+                                item.Children.Add(new Child(childCode, childDesc, childQuantity,childCost));
                             while ((range.Cells[++rCnt, 3] as Excel.Range).Text == "" && rCnt <= range.Rows.Count && (range.Cells[rCnt, 3] as Excel.Range).MergeCells)
                             {
                                 childCode = (range.Cells[rCnt, 11] as Excel.Range).Text;
                                 childDesc = (range.Cells[rCnt, 12] as Excel.Range).Text;
                                 childQuantity = (range.Cells[rCnt, 14] as Excel.Range).Text;
+                                childCost = (range.Cells[rCnt, 15] as Excel.Range).Text;
                                 if (childCode != "" || childDesc != "")
-                                    item.Children.Add(new Child(childCode, childDesc, childQuantity));
+                                    item.Children.Add(new Child(childCode, childDesc, childQuantity,childCost));
                             }
                             break;
                         }
@@ -123,11 +181,11 @@ namespace BOM
             {
 
                 textBox1.AppendText(item.Line + "   " + item.ItemCode + "   " + item.ItemDesc + "    \n");
-                insertData(ImportSheet, rCnt++, item.Line, item.ItemCode, item.ItemDesc, "");
+                insertData(ImportSheet, rCnt++, item.Line, item.ItemCode, item.ItemDesc, "","");
                 foreach (var item2 in item.Children)
                 {
                     textBox1.AppendText("L   " + item2.ItemCode + "    " + item2.ItemDesc + "   " + item2.Quantity + "\n");
-                    insertData(ImportSheet, rCnt++, "L", item2.ItemCode, item2.ItemDesc, item2.Quantity);
+                    insertData(ImportSheet, rCnt++, "L", item2.ItemCode, item2.ItemDesc, item2.Quantity,item2.Cost);
                 }
                 int i = 0;
                 foreach (var item2 in item.Children)
@@ -137,11 +195,11 @@ namespace BOM
                     if (child.Children.Count > 0)
                     {
                         textBox1.AppendText(child.Line + "   " + child.ItemCode + "   " + child.ItemDesc + "    \n");
-                        insertData(ImportSheet, rCnt++, child.Line, child.ItemCode, child.ItemDesc, "");
+                        insertData(ImportSheet, rCnt++, child.Line, child.ItemCode, child.ItemDesc, "","");
                         foreach (var child2 in child.Children)
                         {
                             textBox1.AppendText("L   " + child2.ItemCode + "    " + child2.ItemDesc + "   " + child2.Quantity + "\n");
-                            insertData(ImportSheet, rCnt++, "L", child2.ItemCode, child2.ItemDesc, child2.Quantity);
+                            insertData(ImportSheet, rCnt++, "L", child2.ItemCode, child2.ItemDesc, child2.Quantity,child2.Cost);
                         }
                     }
                 }
@@ -149,7 +207,7 @@ namespace BOM
             }
 
 
-            xlWorkBook.Close(true, misValue, misValue);
+            xlWorkBook.Close(true, @"C:\Users\Lukasz\Downloads\Szablony BOM Montaż\Szablony BOM Montaż\Import\"+openFileDialog1.SafeFileName, misValue);
             xlApp.Quit();
 
             releaseObject(xlWorkSheet);
