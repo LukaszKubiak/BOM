@@ -80,7 +80,7 @@ namespace BOM
                     else
                     {
                         importWorkSheet.Cells[globalrCnt, 5] = code;
-                        importWorkSheet.Cells[globalrCnt, 6] = "'" + desc;
+                        importWorkSheet.Cells[globalrCnt, 6] = desc;
                         importWorkSheet.Cells[globalrCnt, 12] = quantity;
                         importWorkSheet.Cells[globalrCnt, 23] = cost.Replace(" ", String.Empty);
 
@@ -132,6 +132,15 @@ namespace BOM
                             missing.Add(new Codes(code, desc));
                         //}
                     }
+                    else
+                    {
+                        importWorkSheet.Cells[globalrCnt, 3] = line;
+                        importWorkSheet.Cells[globalrCnt, 5] = "'" + code;
+                        importWorkSheet.Cells[globalrCnt, 6] = "'" + desc;
+                        importWorkSheet.Cells[globalrCnt, 12] = quantity;
+                        importWorkSheet.Cells[globalrCnt, 23] = cost.Replace(" ", String.Empty);
+                        globalrCnt++;
+                    }
                     
                 }
             }
@@ -179,6 +188,8 @@ namespace BOM
             int rCnt = 0;
             List<Item> items = new List<Item>();
             List<Item> children = new List<Item>();
+            string test = filename.Substring(30);
+            importWorkSheet.Cells[globalrCnt++, 5] = filename.Substring(30);
             for (rCnt = 18; rCnt <= range.Rows.Count;)
             {
                 var item = new Item();
@@ -315,7 +326,6 @@ namespace BOM
 
             }
 
-            globalrCnt++;
             xlWorkBook.Close(false, misValue, misValue);
             xlApp.Quit();
 
